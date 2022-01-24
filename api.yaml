@@ -1,0 +1,40 @@
+swagger: "2.0"
+info:
+  title: "Advertisement Management System"
+  version: "1.0.0"
+  description: "Advertisement Management System API"
+  contact:
+    email: rututhakkar105@gmail.com
+schemes: [http,https]
+tags:
+  name: "Users"
+  description: "Everything about user"
+
+paths:
+  /users:
+    get:
+      tags:
+        - Users
+      summary: "Home page"
+      description: "Home page for the user"
+      produces:
+        - application/json
+      responses:
+        200:
+          description: "OK"
+  
+  /users/getAllUsers:
+    get:
+      tags:
+        - Users
+      summary: "Get all users"
+      produces:
+        - application/json
+      responses:
+        200:
+          description : "OK"
+        500:
+          description : "Internal Server Error"
+          
+
+ 
