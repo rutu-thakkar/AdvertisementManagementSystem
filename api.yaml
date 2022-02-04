@@ -5,7 +5,7 @@ info:
   description: "Advertisement Management System API"
   contact:
     email: rututhakkar105@gmail.com
-schemes: [http,https]
+schemes: [http, https]
 tags:
   name: "Users"
   description: "Everything about user"
@@ -22,7 +22,7 @@ paths:
       responses:
         200:
           description: "OK"
-  
+
   /users/getAllUsers:
     get:
       tags:
@@ -32,9 +32,217 @@ paths:
         - application/json
       responses:
         200:
-          description : "OK"
+          description: "OK"
         500:
-          description : "Internal Server Error"
-          
+          description: "Internal Server Error"
 
- 
+  /users/signup:
+    post:
+      tags:
+        - Users
+      summary: "Add user"
+      description: "Add User Object"
+      consumes:
+        - multipart/form-data
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: formData
+          name: profile
+          type: file
+          required: true
+          description: "Profile Picture of the user"
+        - in: formData
+          name: name
+          type: string
+          required: true
+          description: "The name of the user"
+        - in: formData
+          name: email
+          type: string
+          required: true
+          description: "The email id of the user"
+        - in: formData
+          name: password
+          type: string
+          required: true
+          description: "The password of the user"
+      responses:
+        200:
+          description: "OK"
+        500:
+          description: "Internal Server Error"
+        404:
+          description: "Not Found"
+
+  /users/login:
+    post:
+      tags:
+        - Users
+      summary: "Login"
+      description: "Login"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                description: "Email address"
+              password:
+                type: string
+                description: password
+      responses:
+        200:
+          description: "OK"
+        500:
+          description: "Internal Server Error"
+        404:
+          description: "Not Found"
+
+  /users/deleteUser:
+    delete:
+      tags:
+        - Users
+      summary: "Delete a user"
+      description: "Delete a user by the email address"
+      required: true
+      parameters:
+        - in: body
+          name: email
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                description: "The email address to delete"
+              password:
+                type: string
+                description: "password of the account to delete"
+      responses:
+        200:
+          description: "OK"
+        500:
+          description: "Internal Server Error"
+        404:
+          description: "Not Found"
+
+  /users/updateUser:
+    post:
+      tags:
+        - Users
+      summary: "Get info to update user"
+      description: "Get info to update user"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                description: "Email address"
+      responses:
+        200:
+          descripttion: "Success"
+        404:
+          description: "Not Found"
+        500:
+          description: "Internal Server Error"
+
+    put:
+      tags:
+        - Users
+      summary: Update a user
+      description: Update a user
+      required: true
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                description: name Of User
+              email:
+                type: string
+                description: email address of the user you need to update
+      responses:
+        200:
+          description: "Success"
+        500:
+          description: "Internal Server Error"
+        404:
+          description: "Not Found"
+
+  /users/resetPassord:
+    post:
+      tags:
+        - Users
+      summary: "Reset Password"
+      description: "Reset Password"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                description: "email address"
+              password:
+                type: string
+                description: "Password to reset"
+      responses:
+        200:
+          description: "Success"
+        404:
+          description: "Not Found"
+        500:
+          description: "Internal Server Error"
+
+  /users/forgotPassword:
+    post:
+      tags:
+        - Users
+      summary: "send link to Reset Password on this given email"
+      description: "send link to reset password on this given email"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                description: "email to which reset password will be send"
+      responses:
+        200:
+          description: "Success"
+        404:
+          description: "Not found"
+        500:
+          description: "Internal Server Error"

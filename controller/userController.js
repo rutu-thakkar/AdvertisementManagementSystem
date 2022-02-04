@@ -5,6 +5,7 @@ const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
+const validator = require("email-validator");
 
 app.use(cookieParser());
 
@@ -41,6 +42,10 @@ exports.getAllUsers = (req, res) => {
 // sign up or register user
 var mailOptions;
 exports.signup = (req, res) => {
+  if (validator.validate(req.body.email) === false) {
+    res.json({ error: "Please emter email in proper format." });
+    return;
+  }
   db.users
     .findOne({
       where: {
@@ -71,13 +76,14 @@ exports.signup = (req, res) => {
               "Please click the given link to verify your email account. " +
               link,
           };
+
           db.users
             .create({
               name: req.body.name,
               profile: req.file.filename,
               email: req.body.email,
               password: hash,
-              secretkey: secretKey,
+              secretkey: token,
             })
             .then((data) => {
               if (!data) {
@@ -110,19 +116,54 @@ exports.signup = (req, res) => {
 };
 
 // Verify email account
-
 exports.verify = (req, res) => {
-
   const { token } = req.params;
   const result = jwt.verify(token, process.env.secret);
-  res.json({
-    result,
-    message: "Now you can Log in",
-  });
+  db.users
+    .findOne({
+      sercretkey: token,
+    })
+    .then((user) => {
+      if (!user) {
+        return;
+      }
+      db.users
+        .update(
+          {
+            isActive: 1,
+            secretkey: "",
+          },
+          {
+            where: {
+              secretkey: token,
+            },
+          }
+        )
+        .then((updated) => {
+          if (updated === 0) {
+            res.json({
+              message: "Something Went wrong",
+            });
+            return;
+          }
+          res.json({
+            result,
+            message: "Account Activated! you can Log in.",
+          });
+        });
+    })
+    .catch((error) => {
+      res.json({ error: error });
+    });
 };
 
 // login user
 exports.login = (req, res) => {
+  if (validator.validate(req.body.email) === false) {
+    res.json({ error: "Please enter email in proper format." });
+    return;
+  }
+
   db.users
     .findOne({
       where: {
@@ -136,8 +177,6 @@ exports.login = (req, res) => {
         });
         return;
       }
-
-      //   res.json({ data });
 
       if (data.isActive == 0) {
         res.json({
@@ -180,28 +219,225 @@ exports.deleteUser = (req, res) => {
         });
         return;
       }
-      db.users
-        .destroy({
-          where: {
-            email: user.email,
-          },
-        })
-        .then((data) => {
-          if (data === 0) {
-            res.json({
-              message: "Something went wrong! No User Deleted!",
+      bcrypt.compare(req.body.password, user.password, (err, result) => {
+        if (err) {
+          res.json({ message: err.message });
+          return;
+        }
+        if (result) {
+          db.users
+            .destroy({
+              where: {
+                email: user.email,
+              },
+            })
+            .then((data) => {
+              if (data === 0) {
+                res.json({
+                  message: "Something went wrong! No User Deleted!",
+                });
+              } else {
+                res.json({
+                  message: data + " user deleted successfully!",
+                });
+              }
+            })
+            .catch((error) => {
+              res.json({ error: "Error : " + error.message });
             });
-          } else {
-            res.json({
-              message: data + " user deleted successfully!",
-            });
-          }
-        })
-        .catch((error) => {
-          res.json({ error: "Error : " + error.message });
-        });
+        } else {
+          res.json({
+            message: "Incorrect Password",
+          });
+        }
+      });
     })
     .catch((error) => {
       res.json({ error: "Error : " + error.message });
     });
 };
+
+exports.getUpdateUser = (req, res) => {
+  db.users
+    .findOne({
+      where: {
+        email: req.body.email,
+      },
+    })
+    .then((user) => {
+      if (!user) {
+        res.json({ message: "User not found" });
+        return;
+      }
+      res.json({ message: "user data", user });
+    })
+    .catch((err) => {
+      res.json({ message: err.message });
+    });
+};
+
+exports.updateUser = (req, res) => {
+  db.users
+    .findOne({
+      where: {
+        email: req.body.email,
+      },
+    })
+    .then((data) => {
+      if (!data) {
+        res.json({
+          message: "No User found",
+        });
+        return;
+      }
+      db.users
+        .update(
+          {
+            name: req.body.name,
+          },
+          {
+            where: {
+              email: req.body.email,
+            },
+          }
+        )
+        .then((data) => {
+          if (data === 0) {
+            res.json({
+              message: "No user Updated!",
+            });
+          } else {
+            res.json({
+              message: data + " user Updated!",
+            });
+          }
+        })
+        .catch((err) => {
+          res.json({ error: err.message });
+        });
+    })
+    .catch((err) => {
+      res.json({ error: err.message });
+    });
+};
+
+exports.getForgotPassword = (req, res) => {
+  res.render("resetPassword");
+};
+
+exports.forgotPassword = (req, res) => {
+  db.users
+    .findOne({
+      where: {
+        email: req.body.email,
+      },
+    })
+    .then((data) => {
+      if (!data) {
+        res.json({ message: "Email address not found" });
+        return;
+      }
+      const secretKey = process.env.secret + data.password;
+      const token = jwt.sign(
+        {
+          email: data.email,
+        },
+        secretKey,
+        { expiresIn: "15m" }
+      );
+      const link = `http://${req.get("host")}/users/${data.id}/${token}`;
+      mailOptions = {
+        to: req.body.email,
+        subject: "Reset Password",
+        html:
+          "<b>Reset Password link</b>, " +
+          "<br>" +
+          "Click here to reset your password " +
+          "<br>" +
+          link,
+      };
+      transport.sendMail(mailOptions, (error, result) => {
+        if (error) {
+          res.json({
+            message: "Something Went wrong! Try Again.",
+          });
+          return;
+        }
+        res.json({
+          message: "link to reset password sent to your email address",
+        });
+      });
+    })
+    .catch((err) => {
+      res.json({
+        message: err.message,
+      });
+    });
+};
+
+exports.getresetPassord = (req, res) => {
+  const { id, token } = req.params;
+  // console.log(id, token);
+  db.users
+    .findOne({
+      where: {
+        id: id,
+      },
+    })
+    .then((user) => {
+      console.log(user);
+      if (!user) {
+        res.json({
+          message: "No user found",
+        });
+        return;
+      }
+      const secretKey = process.env.secret + user.password;
+      const result = jwt.verify(token, secretKey);
+      res.json({
+        result,
+        message: "Reset Your Password",
+      });
+    })
+    .catch((error) => {
+      res.json({
+        message: "Error",
+      });
+    });
+};
+
+exports.resetPassword = (req, res) => {
+  bcrypt.genSalt(10, (err, salt) => {
+    bcrypt.hash(req.body.password, salt, (err, hash) => {
+      db.users
+        .update(
+          {
+            password: hash,
+          },
+          {
+            where: {
+              email: req.body.email,
+            },
+          }
+        )
+        .then((data) => {
+          if (data === 0) {
+            res.json({
+              message: "No User found",
+            });
+            return;
+          }
+          res.json({
+            message: data + " data updated successfully.",
+          });
+        })
+        .catch((error) => {
+          res.json({
+            message: "Error updating password. " + error,
+          });
+        });
+    });
+  });
+};
+
+exports.showAllPost = (req, res) => {};

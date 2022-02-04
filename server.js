@@ -11,6 +11,7 @@ const JSDoc = YAML.load("./api.yaml");
 
 app.use(cors());
 app.use(express.json());
+app.set('view engine', 'ejs');
 app.use("/users", userRoutes);
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(JSDoc));
 
