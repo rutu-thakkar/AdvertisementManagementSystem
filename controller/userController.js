@@ -56,11 +56,11 @@ exports.getAllUsers = (req, res) => {
         success: 1,
         data: users,
       });
-      logger.advertiseLogger.log("info", "successfully got all users");
+      logger.userLogger.log("info", "successfully got all users");
     })
     .catch((err) => {
       res.json({ message: err.message });
-      logger.advertiseLogger.log("error", "Error displaying users");
+      logger.userLogger.log("error", "Error displaying users");
     });
 };
 
@@ -128,6 +128,10 @@ exports.signup = (req, res) => {
                   res.json({
                     message: "Something Went Wrong!",
                   });
+                  logger.userLogger.log(
+                    "error",
+                    "Error in Sign Up data not inputted entered by the user"
+                  );
                   return;
                 }
                 transport.sendMail(mailOptions, (error, response) => {
@@ -139,6 +143,7 @@ exports.signup = (req, res) => {
                         "Sign up successful kindly verify your email to activate your account.",
                       data,
                     });
+                    logger.userLogger.log("info", "Sign Up successful");
                   }
                 });
               });
@@ -152,6 +157,7 @@ exports.signup = (req, res) => {
       res.json({
         message: "Error: " + err,
       });
+      logger.userLogger.log("error", "Error in Sign Up");
     });
 };
 
@@ -184,6 +190,11 @@ exports.verify = (req, res) => {
             res.json({
               message: "Something Went wrong",
             });
+            logger.userLogger.log(
+              "error",
+              "Error in verifying user email account"
+            );
+
             return;
           }
           res.json({
@@ -194,6 +205,7 @@ exports.verify = (req, res) => {
     })
     .catch((error) => {
       res.json({ error: error });
+      logger.userLogger.log("error", "Error in verifying user email account");
     });
 };
 
@@ -224,6 +236,7 @@ exports.login = (req, res) => {
             res.json({
               message: "Login successful",
             });
+            logger.userLogger.log("info", "Login successful");
             return;
           }
           res.json({
@@ -236,6 +249,7 @@ exports.login = (req, res) => {
       res.json({
         message: err.message,
       });
+      logger.userLogger.log("error", "Error in login");
     });
 };
 
@@ -272,14 +286,23 @@ exports.deleteUser = (req, res) => {
                 res.json({
                   message: "Something went wrong! No User Deleted!",
                 });
+                logger.userLogger.log(
+                  "error",
+                  "Error in deleting user account"
+                );
               } else {
                 res.json({
                   message: data + " user deleted successfully!",
                 });
+                logger.userLogger.log("info", "User Deleted successfully");
               }
             })
             .catch((error) => {
               res.json({ error: "Error : " + error.message });
+              logger.userLogger.log(
+                "error",
+                "Error in deleting user: " + error.message
+              );
             });
         } else {
           res.json({
@@ -290,6 +313,10 @@ exports.deleteUser = (req, res) => {
     })
     .catch((error) => {
       res.json({ error: "Error : " + error.message });
+      logger.userLogger.log(
+        "error",
+        "Error in deleting user: " + error.message
+      );
     });
 };
 
@@ -306,9 +333,17 @@ exports.getUpdateUser = (req, res) => {
         return;
       }
       res.json({ message: "user data", user });
+      logger.userLogger.log(
+        "info",
+        "Information to update user found successfully"
+      );
     })
     .catch((err) => {
       res.json({ message: err.message });
+      logger.userLogger.log(
+        "error",
+        "Error in getting user to update: " + err.message
+      );
     });
 };
 
@@ -346,10 +381,15 @@ exports.updateUser = (req, res) => {
             res.json({
               message: data + " user Updated!",
             });
+            logger.userLogger.log("info", "User Updated successfully");
           }
         })
         .catch((err) => {
           res.json({ error: err.message });
+          logger.userLogger.log(
+            "error",
+            "Error in getting user to update: " + err.message
+          );
         });
     })
     .catch((err) => {
@@ -402,12 +442,17 @@ exports.forgotPassword = (req, res) => {
         res.json({
           message: "link to reset password sent to your email address",
         });
+        logger.userLogger.log("info", "password reset link send successful");
       });
     })
     .catch((err) => {
       res.json({
         message: err.message,
       });
+      logger.userLogger.log(
+        "error",
+        "Error in sending link to reset password : " + err.message
+      );
     });
 };
 
@@ -439,6 +484,10 @@ exports.getresetPassord = (req, res) => {
       res.json({
         message: "Error",
       });
+      logger.userLogger.log(
+        "error",
+        "Error in reseting password: " + error.message
+      );
     });
 };
 
@@ -466,6 +515,7 @@ exports.resetPassword = (req, res) => {
           res.json({
             message: data + " data updated successfully.",
           });
+          logger.userLogger.log("info", "Password updated successfully");
         })
         .catch((error) => {
           res.json({
