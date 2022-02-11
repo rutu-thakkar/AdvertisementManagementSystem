@@ -1,13 +1,24 @@
 const express = require("express");
 const app = express();
+const session = require("express-session");
 const db = require("../models");
 const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
-const cookieParser = require("cookie-parser");
-const validator = require("email-validator");
+require("dotenv").config();
+// const validator = require("email-validator");
+const { userSchema, loginSchema } = require("../Validation");
+const logger = require("./logger");
 
-app.use(cookieParser());
+// console.log(process.env.SESSION_SECRET);
+app.use(
+  session({
+    secret: "keyboard cat",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: true },
+  })
+);
 
 var transport = nodemailer.createTransport({
   service: "Gmail",
@@ -18,6 +29,13 @@ var transport = nodemailer.createTransport({
 });
 
 exports.home = (req, res) => {
+  // res.cookie("user", "Rutu Thakkar");
+  // console.log(req.cookies);
+
+  console.log(req.headers.cookie);
+  // console.log("demoCookies" + req.rawHeaders.user);
+  // console.log("Cookies: ", req.cookies);
+
   res.json({
     message: "Welcome to the Advertisement Management System",
   });
@@ -25,31 +43,45 @@ exports.home = (req, res) => {
 
 // get all users
 exports.getAllUsers = (req, res) => {
-  db.users.findAll().then((users) => {
-    if (Object.keys(users).length === 0) {
+  db.users
+    .findAll()
+    .then((users) => {
+      if (Object.keys(users).length === 0) {
+        res.json({
+          message: "No user found",
+        });
+        return;
+      }
       res.json({
-        message: "No user found",
+        success: 1,
+        data: users,
       });
-      return;
-    }
-    res.json({
-      success: 1,
-      data: users,
+      logger.advertiseLogger.log("info", "successfully got all users");
+    })
+    .catch((err) => {
+      res.json({ message: err.message });
+      logger.advertiseLogger.log("error", "Error displaying users");
     });
-  });
 };
 
 // sign up or register user
 var mailOptions;
 exports.signup = (req, res) => {
-  if (validator.validate(req.body.email) === false) {
-    res.json({ error: "Please emter email in proper format." });
+  // if (validator.validate(req.body.email) === false) {
+  //   res.json({ error: "Please emter email in proper format." });
+  //   return;
+  // }
+  const result = userSchema.validate(req.body);
+  // res.json(result);
+  if (result.error) {
+    res.json({ error: result.error.details[0].message });
     return;
   }
+  // res.json({ result: result.value.email });
   db.users
     .findOne({
       where: {
-        email: req.body.email,
+        email: result.value.email,
       },
     })
     .then((data) => {
@@ -59,54 +91,62 @@ exports.signup = (req, res) => {
         });
         return;
       }
-      bcrypt.genSalt(10, (err, salt) => {
-        bcrypt.hash(req.body.password, salt, (err, hash) => {
-          const secretKey = process.env.secret;
-          const token = jwt.sign(
-            {
-              email: req.body.email,
-            },
-            secretKey
-          );
-          const link = `http://${req.get("host")}/users/${token}`;
-          mailOptions = {
-            to: req.body.email,
-            subject: "Please Confirm Your email account",
-            html:
-              "Please click the given link to verify your email account. " +
-              link,
-          };
 
-          db.users
-            .create({
-              name: req.body.name,
-              profile: req.file.filename,
-              email: req.body.email,
-              password: hash,
-              secretkey: token,
-            })
-            .then((data) => {
-              if (!data) {
-                res.json({
-                  message: "Something Went Wrong!",
-                });
-                return;
-              }
-              transport.sendMail(mailOptions, (error, response) => {
-                if (error) {
-                  res.json({ error });
-                } else {
-                  res.cookie(data.email);
-                  res.status(200).json({
-                    message:
-                      "Sign up successful kindly verify your email to activate your account.",
-                    data,
+      if (
+        req.file.mimetype === "image/png" ||
+        req.file.mimetype === "image/jpg" ||
+        req.file.mimetype === "image/jpeg"
+      ) {
+        bcrypt.genSalt(10, (err, salt) => {
+          bcrypt.hash(req.body.password, salt, (err, hash) => {
+            const secretKey = process.env.secret;
+            const token = jwt.sign(
+              {
+                email: result.value.email,
+              },
+              secretKey
+            );
+            const link = `http://${req.get("host")}/users/${token}`;
+            mailOptions = {
+              to: result.value.email,
+              subject: "Please Confirm Your email account",
+              html:
+                "Please click the given link to verify your email account. " +
+                "<br>" +
+                link,
+            };
+            db.users
+              .create({
+                name: req.body.name,
+                profile: req.file.filename,
+                email: result.value.email,
+                password: hash,
+                secretkey: token,
+              })
+              .then((data) => {
+                if (!data) {
+                  res.json({
+                    message: "Something Went Wrong!",
                   });
+                  return;
                 }
+                transport.sendMail(mailOptions, (error, response) => {
+                  if (error) {
+                    res.json({ error });
+                  } else {
+                    res.status(200).json({
+                      message:
+                        "Sign up successful kindly verify your email to activate your account.",
+                      data,
+                    });
+                  }
+                });
               });
-            });
+          });
         });
-      });
+      } else {
+        res.json({ message: "profile must be image" });
+      }
     })
     .catch((err) => {
       res.json({
@@ -159,11 +199,6 @@ exports.verify = (req, res) => {
 
 // login user
 exports.login = (req, res) => {
-  if (validator.validate(req.body.email) === false) {
-    res.json({ error: "Please enter email in proper format." });
-    return;
-  }
-
   db.users
     .findOne({
       where: {
@@ -206,6 +241,7 @@ exports.login = (req, res) => {
 
 //delete User by email
 exports.deleteUser = (req, res) => {
+  // res.json(req.cookies);
   db.users
     .findOne({
       where: {
@@ -440,4 +476,8 @@ exports.resetPassword = (req, res) => {
   });
 };
 
-exports.showAllPost = (req, res) => {};
+exports.demo = (req, res) => {
+  res.json({
+    message: "",
+  });
+};

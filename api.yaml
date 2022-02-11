@@ -9,7 +9,8 @@ schemes: [http, https]
 tags:
   name: "Users"
   description: "Everything about user"
-
+  name: "Posts"
+  description: "Everything about post"
 paths:
   /users:
     get:
@@ -244,5 +245,70 @@ paths:
           description: "Success"
         404:
           description: "Not found"
+        500:
+          description: "Internal Server Error"
+
+#==================POSTs================
+  /posts/:
+    get:
+      tags:
+        - Posts
+      summary: "home"
+      description: "Home of posts"
+      responses:
+        200:
+          description: "OK"
+        500:
+          description: "Internal Server Error"
+        404:
+          description: "Not Found"
+
+  /posts/addPost:
+    post:
+      tags:
+        - Posts
+      summary: "Add Post"
+      description: "Add Post"
+      produces:
+        - multipart/form-data
+        - application/json
+      consumes:
+        - application/json
+      parameters:
+        - in: formData
+          name: postImage
+          type: file
+          description: "Post Images"
+        - in: formData
+          name: postTitle
+          type: string
+          description: "Post Title"
+        - in: formData
+          name: postDescription
+          type: string
+          description: "Post Description"
+        - in: formData
+          name: userEmail
+          type: string
+          description: "User Email"
+      responses:
+        200:
+          description: "Success"
+        404:
+          description: "Not Found"
+        500:
+          description: "Internal Server Error"
+
+  /posts/getAllPosts:
+    get:
+      tags:
+        - Posts
+      summary: "get AllPosts"
+      description: "Get all posts"
+      responses:
+        200:
+          description: "Success"
+        404:
+          description: "Not Found"
         500:
           description: "Internal Server Error"
